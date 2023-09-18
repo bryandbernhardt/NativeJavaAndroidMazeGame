@@ -4,7 +4,9 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.media.metrics.PlaybackErrorEvent;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.Nullable;
@@ -15,11 +17,15 @@ import java.util.Stack;
 
 public class MazeView extends View {
     private Cell[][] cells;
+    private Cell player, exit;
     private static final int COLS =  8, ROWS = 12;
     private static final float WALL_THICKNESS = 4;
     private float cellSize, hMargin, vMargin;
-    private Paint wallPaint;
+    private Paint wallPaint, playerPaint, exitPaint;
     private Random random;
+    private enum Direction {
+        UP, DOWN, LEFT, RIGHT
+    }
 
     public MazeView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -28,9 +34,48 @@ public class MazeView extends View {
         wallPaint.setColor(Color.BLACK);
         wallPaint.setStrokeWidth(WALL_THICKNESS);
 
+        playerPaint = new Paint();
+        playerPaint.setColor(Color.WHITE);
+
+        exitPaint = new Paint();
+        exitPaint.setColor(Color.BLACK);
+
         random = new Random();
 
         createMaze();
+    }
+
+    private void createMaze() {
+        cells = new Cell[COLS][ROWS];
+        Stack<Cell> stack = new Stack<>();
+        Cell current, next;
+
+        // cria as cédulas
+        for(int x = 0; x < COLS; x++) {
+            for(int y = 0; y < ROWS; y++) {
+                cells[x][y] = new Cell(x, y);
+            }
+        }
+
+        // define posição do jogador e final
+        player = cells[0][0];
+        exit = cells[COLS - 1][ROWS - 1];
+
+        // gera labirinto aleatório
+        current = cells[0][0];
+        current.visited = true;
+
+        do {
+            next = getNext(current);
+            if (next != null) {
+                removeWall(current, next);
+                stack.push(current);
+                current = next;
+                current.visited = true;
+            } else {
+                current = stack.pop();
+            }
+        } while(!stack.empty());
     }
 
     private Cell getNext(Cell cell) {
@@ -90,37 +135,11 @@ public class MazeView extends View {
         }
     }
 
-    private void createMaze() {
-        cells = new Cell[COLS][ROWS];
-        Stack<Cell> stack = new Stack<>();
-        Cell current, next;
-
-        for(int x = 0; x < COLS; x++) {
-            for(int y = 0; y < ROWS; y++) {
-                cells[x][y] = new Cell(x, y);
-            }
-        }
-
-        current = cells[0][0];
-        current.visited = true;
-
-        do {
-            next = getNext(current);
-            if (next != null) {
-                removeWall(current, next);
-                stack.push(current);
-                current = next;
-                current.visited = true;
-            } else {
-                current = stack.pop();
-            }
-        } while(!stack.empty());
-    }
-
     @Override
     protected void onDraw(Canvas canvas) {
         canvas.drawColor(Color.parseColor("#04D900"));
 
+        // adapta ao tamanho da tela
         int width = getWidth();
         int height = getHeight();
 
@@ -137,6 +156,7 @@ public class MazeView extends View {
 
         canvas.translate(hMargin, vMargin);
 
+        // desenha matriz
         for(int x = 0; x < COLS; x++) {
             for(int y = 0; y < ROWS; y++) {
                 if(cells[x][y].leftWall) {
@@ -179,6 +199,112 @@ public class MazeView extends View {
                     );
                 }
             }
+        }
+
+        // desenha jogador e final
+        float margin = cellSize / 10;
+
+        canvas.drawRect(
+                player.col * cellSize + margin,
+                player.row * cellSize + margin,
+                (player.col + 1) * cellSize - margin,
+                (player.row + 1) * cellSize - margin,
+                playerPaint
+        );
+
+        canvas.drawRect(
+                exit.col * cellSize + margin,
+                exit.row * cellSize + margin,
+                (exit.col + 1) * cellSize - margin,
+                (exit.row + 1) * cellSize - margin,
+                exitPaint
+        );
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN){
+            return true;
+        }
+
+        // se o evento de touch for igual ACTION_MOVE
+        if (event.getAction() == MotionEvent.ACTION_MOVE) {
+            // captura a posição do evento
+            float x = event.getX();
+            float y = event.getY();
+
+            // captura a posição do jogador
+            float playerCenterX = hMargin + (player.col + 0.5f) * cellSize;
+            float playerCenterY = vMargin + (player.row + 0.5f) * cellSize;
+
+            // calcula a diferença entre o evento e o jogador
+            float diferenceX = x - playerCenterX;
+            float diferenceY = y - playerCenterY;
+
+            float absoluteDiferenceX = Math.abs(diferenceX);
+            float absoluteDiferenceY = Math.abs(diferenceY);
+
+            // verifica qual direção movimentar
+            if (absoluteDiferenceX > cellSize || absoluteDiferenceY > cellSize) {
+                if (absoluteDiferenceX > absoluteDiferenceY) {
+                    // move na direção X
+                    if (diferenceX > 0) {
+                        // move para direita
+                        movePlayer(Direction.RIGHT);
+                    } else {
+                        // move para esquerda
+                        movePlayer(Direction.LEFT);
+                    }
+                } else {
+                    // move na direção Y
+                    if (diferenceY > 0) {
+                        // move para baixo
+                        movePlayer(Direction.DOWN);
+                    } else {
+                        // move para cima
+                        movePlayer(Direction.UP);
+                    }
+                }
+            }
+            return true;
+        }
+
+        return super.onTouchEvent(event);
+    }
+
+    private void movePlayer(Direction direction) {
+        switch (direction) {
+            case UP:
+                if (!player.topWall) {
+                    player = cells[player.col][player.row - 1];
+                }
+                break;
+            case DOWN:
+                if (!player.bottomWall) {
+                    player = cells[player.col][player.row + 1];
+                }
+                break;
+            case LEFT:
+                if (!player.leftWall) {
+                    player = cells[player.col - 1][player.row];
+                }
+                break;
+            case RIGHT:
+                if (!player.rightWall) {
+                    player = cells[player.col + 1][player.row];
+                }
+        }
+
+        // verifica se está no final
+        checkExit();
+
+        // chama o método on draw
+        invalidate();
+    }
+
+    private void checkExit() {
+        if (player == exit) {
+            createMaze();
         }
     }
 
