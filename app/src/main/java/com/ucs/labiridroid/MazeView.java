@@ -18,7 +18,7 @@ import java.util.Stack;
 public class MazeView extends View {
     private Cell[][] cells;
     private Cell player, exit;
-    private static final int COLS =  8, ROWS = 12;
+    private int Cols =  2, Rows = 4;
     private static final float WALL_THICKNESS = 4;
     private float cellSize, hMargin, vMargin;
     private Paint wallPaint, playerPaint, exitPaint;
@@ -26,6 +26,7 @@ public class MazeView extends View {
     private enum Direction {
         UP, DOWN, LEFT, RIGHT
     }
+    private int points = 0;
 
     public MazeView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -46,20 +47,20 @@ public class MazeView extends View {
     }
 
     private void createMaze() {
-        cells = new Cell[COLS][ROWS];
+        cells = new Cell[Cols][Rows];
         Stack<Cell> stack = new Stack<>();
         Cell current, next;
 
         // cria as cédulas
-        for(int x = 0; x < COLS; x++) {
-            for(int y = 0; y < ROWS; y++) {
+        for(int x = 0; x < Cols; x++) {
+            for(int y = 0; y < Rows; y++) {
                 cells[x][y] = new Cell(x, y);
             }
         }
 
         // define posição do jogador e final
         player = cells[0][0];
-        exit = cells[COLS - 1][ROWS - 1];
+        exit = cells[Cols - 1][Rows - 1];
 
         // gera labirinto aleatório
         current = cells[0][0];
@@ -87,7 +88,7 @@ public class MazeView extends View {
         }
 
         // índice para direita
-        if(cell.col < COLS - 1 && !cells[cell.col + 1][cell.row].visited) {
+        if(cell.col < Cols - 1 && !cells[cell.col + 1][cell.row].visited) {
             nexts.add(cells[cell.col + 1][cell.row]);
         }
 
@@ -97,7 +98,7 @@ public class MazeView extends View {
         }
 
         // índice para baixo
-        if(cell.row < ROWS - 1 && !cells[cell.col][cell.row + 1].visited) {
+        if(cell.row < Rows - 1 && !cells[cell.col][cell.row + 1].visited) {
             nexts.add(cells[cell.col][cell.row + 1]);
         }
 
@@ -143,22 +144,22 @@ public class MazeView extends View {
         int width = getWidth();
         int height = getHeight();
 
-        if(width/height < ROWS/COLS) {
-            cellSize = width/(COLS + 1);
-        } else if (width/height < ROWS/COLS){
-            cellSize = height/(COLS + 1);
+        if(width/height < Rows/Cols) {
+            cellSize = width/(Cols + 1);
+        } else if (width/height < Rows/Cols){
+            cellSize = height/(Cols + 1);
         } else {
-            cellSize = height/(ROWS + 1);
+            cellSize = height/(Rows + 1);
         }
 
-        hMargin = (width - COLS * cellSize) / 2;
-        vMargin = (height - ROWS * cellSize) / 2;
+        hMargin = (width - Cols * cellSize) / 2;
+        vMargin = (height - Rows * cellSize) / 2;
 
         canvas.translate(hMargin, vMargin);
 
         // desenha matriz
-        for(int x = 0; x < COLS; x++) {
-            for(int y = 0; y < ROWS; y++) {
+        for(int x = 0; x < Cols; x++) {
+            for(int y = 0; y < Rows; y++) {
                 if(cells[x][y].leftWall) {
                     canvas.drawLine(
                             x * cellSize,
@@ -304,6 +305,9 @@ public class MazeView extends View {
 
     private void checkExit() {
         if (player == exit) {
+            points += 1;
+            Cols += 1;
+            Rows += 1;
             createMaze();
         }
     }
