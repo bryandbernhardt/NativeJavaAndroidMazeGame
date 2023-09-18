@@ -4,13 +4,10 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.media.metrics.PlaybackErrorEvent;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
-
 import androidx.annotation.Nullable;
-
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Stack;
@@ -310,6 +307,18 @@ public class MazeView extends View {
             Rows += 1;
             createMaze();
         }
+    }
+
+    public void resetMaze() {
+        points -= 1;
+        createMaze();
+    }
+
+    public void returnMaze() {
+        Cols =  2;
+        Rows = 4;
+        points = 0;
+        createMaze();
     }
 
     private class Cell {
